@@ -1,0 +1,5 @@
+Block (
+    texture_name: "mat-3.png",
+    opaque: false,
+    liquid: false
+)
