@@ -5,10 +5,12 @@ use bevy::{asset::LoadState, prelude::*};
 use bevy_fly_camera::{FlyCamera, FlyCameraPlugin};
 
 use crate::chunk::Relative;
+use crate::skysphere::SkyPlugin;
 
 mod blocks;
 mod chunk;
 mod generation;
+mod skysphere;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum AppState {
@@ -31,6 +33,7 @@ fn main() {
         .add_plugin(FlyCameraPlugin)
         .add_plugin(blocks::BlockPlugin)
         .add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(SkyPlugin)
         .run();
 }
 
@@ -47,13 +50,10 @@ fn wait_loading(
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn_bundle(DirectionalLightBundle {
-        ..Default::default()
-    });
     commands
         .spawn_bundle(PerspectiveCameraBundle::new_3d())
         .insert(FlyCamera::default())
-        .insert(crate::chunk::Relative([5, 5, 5]));
+        .insert(crate::chunk::Relative([0, 0, 0]));
 }
 
 fn cursor_grab_system(
