@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "Blocky"
+name = "Rusted"
 version = "0.1.0"
 dependencies = [
  "anyhow",
