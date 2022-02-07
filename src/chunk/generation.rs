@@ -1,16 +1,17 @@
 use std::cmp::max;
+
 use bevy::prelude::*;
 use building_blocks::core::{Extent2i, Extent3i, Point3i, PointN};
-use building_blocks::prelude::{Array2x1, Array3x1, Get, GetMut };
+use building_blocks::prelude::{Array2x1, Array3x1, Get, GetMut};
 use noise::{
     Fbm, MultiFractal, NoiseFn, Point2, Point3, ScaleBias, Seedable, SuperSimplex,
 };
 
-use crate::chunk::{Chunk, ChunkEvent, ChunkWorld, Voxel};
 use crate::{
     App, AppState, Commands, Entity, EventReader, NonSendMut, Plugin, Query, Res, ResMut,
     SystemSet, Transform, Vec3,
 };
+use crate::chunk::{Chunk, ChunkEvent, ChunkWorld, Voxel};
 
 pub struct ChunkGeneratorPlugin;
 
@@ -18,7 +19,7 @@ type Seed = i64;
 
 impl Plugin for ChunkGeneratorPlugin {
     fn build(&self, app: &mut App) {
-        app // TODO add labels
+        app
             .add_system_set(
                 SystemSet::new()
                     .label("facets")
@@ -53,9 +54,9 @@ struct DensityFacet(Facet3D<f32>);
 
 fn provide_sealevel_facet(
     mut commands: Commands,
-    mut query: Query<(Entity, &GeneratingArea), Without<Facet<SeaLevel>>>,
+    query: Query<Entity, (With<GeneratingArea>, Without<Facet<SeaLevel>>)>,
 ) {
-    for (e, generatingArea) in query.iter() {
+    for e in query.iter() {
         commands.entity(e).insert(Facet(SeaLevel(32)));
     }
 }
@@ -64,8 +65,8 @@ fn provide_flat_elevation_facet(
     mut commands: Commands,
     query: Query<(Entity, &GeneratingArea), Without<Facet<ElevationFacet>>>,
 ) {
-    for (e, generatingArea) in query.iter() {
-        let mut facet = Facet2D::new(generatingArea.0);
+    for (e, area) in query.iter() {
+        let mut facet = Facet2D::new(area.0);
         for val in facet.data.channels_mut().store_mut().iter_mut() {
             *val = 40;
         }
@@ -77,14 +78,14 @@ fn provide_noise_elevation_facet(
     mut commands: Commands,
     query: Query<(Entity, &GeneratingArea, &Facet<SeaLevel>), Without<Facet<ElevationFacet>>>,
 ) {
-    for (e, generatingArea, sea_level) in query.iter() {
-        let sea_level = sea_level.0 .0 as f64;
+    for (e, area, sea_level) in query.iter() {
+        let sea_level = sea_level.0.0 as f64;
         let fbm = Fbm::new().set_octaves(8).set_seed(124235);
         let noise = SubSampleNoise::new(&fbm)
             .set_scale([0.004, 0.004, 1.0])
             .set_sample_rate(4);
 
-        let mut facet = Facet2D::new(generatingArea.0);
+        let mut facet = Facet2D::new(area.0);
         for pos in facet.data.extent().iter_points() {
             let mut val = facet.data.get_mut(pos);
             let mut x = noise.get([pos.x() as f64 + 0.1, pos.y() as f64 + 0.1]);
@@ -112,8 +113,8 @@ fn provide_roughness_facet(
         let noise = ScaleBias::new(&fbm).set_scale(0.0004); // TODO add sample rate :/
 
         let mut facet = SurfaceRoughnessFacet(Facet2D::new(area.0));
-        let sea_level = sea_level.0 .0;
-        let elevation = &elevation.0 .0;
+        let sea_level = sea_level.0.0;
+        let elevation = &elevation.0.0;
         for pos in facet.0.data.extent().iter_points() {
             let value = facet.0.data.get_mut(pos);
             let height = elevation.data.get(pos) - sea_level;
@@ -177,9 +178,9 @@ fn provide_density_noise(
     >,
 ) {
     for (roughness, mut density, mut surface) in query.iter_mut() {
-        let density = &mut density.0 .0;
-        let surface = &mut surface.0 .0;
-        let roughness = &roughness.0 .0;
+        let density = &mut density.0.0;
+        let surface = &mut surface.0.0;
+        let roughness = &roughness.0.0;
         let fbm = Fbm::new()
             .set_octaves(8)
             .set_seed(124235)
@@ -198,11 +199,11 @@ fn provide_density_noise(
 
             *value = *value
                 + small_noise.get([pos.x() as f64, pos.y() as f64, pos.z() as f64]) as f32
-                    * intensity
-                    * 20.0
+                * intensity
+                * 20.0
                 + large_noise.get([pos.x() as f64, pos.y() as f64, pos.z() as f64]) as f32
-                    * large_intensity
-                    * 60.0;
+                * large_intensity
+                * 60.0;
         }
 
         for pos in surface.data.extent().iter_points() {
