@@ -1,16 +1,19 @@
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::tasks::{ComputeTaskPool, Task};
-use building_blocks::mesh::{greedy_quads, GreedyQuadsBuffer, RIGHT_HANDED_Y_UP_CONFIG};
-use building_blocks::prelude::Get;
+use building_blocks::mesh::{
+    greedy_quads, padded_greedy_quads_chunk_extent, GreedyQuadsBuffer, RIGHT_HANDED_Y_UP_CONFIG,
+};
+use building_blocks::prelude::{copy_extent, Get};
+use building_blocks::storage::Array3x1;
 use futures_lite::future;
 
-use crate::{
-    Assets, AssetServer, BuildChildren, Changed, Commands, Entity, GlobalTransform, Mesh,
-    PbrBundle, Query, Res, ResMut, StandardMaterial, Transform,
-};
 use crate::blocks::{Block, Blocks};
-use crate::chunk::{BlockMesh, Chunk, MeshBuf};
+use crate::chunk::{BlockMesh, Chunk, MeshBuf, Voxel};
+use crate::{
+    AssetServer, Assets, BuildChildren, Changed, Commands, Entity, Mesh, PbrBundle, Query, Res,
+    ResMut, StandardMaterial, Transform,
+};
 
 pub const UV_SCALE: f32 = 0.1;
 
@@ -47,7 +50,6 @@ pub fn update_chunk(
                 builder.spawn_bundle(PbrBundle {
                     mesh: meshes.add(render_mesh),
                     material: materials.add(material),
-                    global_transform: GlobalTransform::from(*transform), // TODO investigate why don't using parent's transform
                     ..Default::default()
                 });
             });
@@ -63,10 +65,13 @@ pub fn build_mesh(
     for (e, chunk) in query.iter() {
         let chunk: Chunk = chunk.clone();
         let task = pool.spawn(async move {
-            let extent = *chunk.data.extent();
+            let padded_extent = padded_greedy_quads_chunk_extent(chunk.data.extent());
+            let mut data = Array3x1::fill(padded_extent, Voxel::default());
+            copy_extent(&padded_extent, &chunk.data, &mut data);
+
             let mut greedy_buffer =
-                GreedyQuadsBuffer::new(extent, RIGHT_HANDED_Y_UP_CONFIG.quad_groups());
-            greedy_quads(&chunk.data, &extent, &mut greedy_buffer);
+                GreedyQuadsBuffer::new(padded_extent, RIGHT_HANDED_Y_UP_CONFIG.quad_groups());
+            greedy_quads(&data, &padded_extent, &mut greedy_buffer);
 
             let mut mesh_buf = MeshBuf::default();
             for group in greedy_buffer.quad_groups.iter() {

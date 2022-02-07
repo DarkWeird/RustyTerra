@@ -4,7 +4,7 @@ use bevy::diagnostic::LogDiagnosticsPlugin;
 use bevy::{asset::LoadState, prelude::*};
 use bevy_fly_camera::{FlyCamera, FlyCameraPlugin};
 
-use crate::chunk::Relative;
+use crate::chunk::{ChunkGeneratorPlugin, Relative};
 use crate::skysphere::SkyPlugin;
 
 mod blocks;
@@ -34,6 +34,7 @@ fn main() {
         .add_plugin(blocks::BlockPlugin)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(SkyPlugin)
+        .add_plugin(ChunkGeneratorPlugin)
         .run();
 }
 
@@ -53,7 +54,7 @@ fn setup(mut commands: Commands) {
     commands
         .spawn_bundle(PerspectiveCameraBundle::new_3d())
         .insert(FlyCamera::default())
-        .insert(crate::chunk::Relative([0, 0, 0]));
+        .insert(crate::chunk::Relative([2; 3]));
 }
 
 fn cursor_grab_system(

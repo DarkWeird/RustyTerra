@@ -15,8 +15,8 @@ use building_blocks::mesh::{
 use building_blocks::prelude::*;
 use building_blocks::storage::{Array, Channel};
 use futures_lite::future;
-use noise::{NoiseFn, Perlin};
 
+pub use generation::ChunkGeneratorPlugin;
 use rendering::UV_SCALE;
 
 use crate::blocks::{Block, BlockId, Blocks};
@@ -29,9 +29,7 @@ pub struct ChunkPlugin;
 
 impl Plugin for ChunkPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        let perlin = noise::Perlin::new();
-        app.insert_resource(perlin)
-            .insert_resource(ChunkWorld::default())
+        app.insert_resource(ChunkWorld::default())
             .add_event::<ChunkEvent>()
             .add_system_set(
                 SystemSet::on_update(AppState::Run)
@@ -42,7 +40,6 @@ impl Plugin for ChunkPlugin {
                     .with_system(remove_from_world)
                     .with_system(add_to_world)
                     .with_system(relative_update)
-                    .with_system(generation::chunk_is_done)
                     .with_system(chunk_location_add)
                     .with_system(chunk_location_transition),
             );
@@ -50,7 +47,7 @@ impl Plugin for ChunkPlugin {
 }
 
 pub struct ChunkWorld {
-    world: HashMap<Point3i, Entity>,
+    pub world: HashMap<Point3i, Entity>,
 }
 
 impl Default for ChunkWorld {
@@ -223,7 +220,7 @@ pub struct Chunk {
 
 impl Default for Chunk {
     fn default() -> Self {
-        let extent = Extent3i::from_min_and_shape(PointN::default(), PointN([32; 3])).padded(1);
+        let extent = Extent3i::from_min_and_shape(PointN::default(), PointN([32; 3]));
         let voxels = Array3x1::fill(extent, Voxel::default());
         Chunk {
             pos: Point3i::zero(),
